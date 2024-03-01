@@ -1,23 +1,26 @@
 name: Build
 on:
-  workflow_call:
-    inputs:
-      upload-artifact:
-        type: boolean
-        default: true
-      tag-name:
-        type: string
-        default: "draft"
-      channel:
-        type: string
-        default: "dev"
+  push:
+    branches:
+      - feature/oldlinux 
+  # workflow_call:
+  #   inputs:
+  #     upload-artifact:
+  #       type: boolean
+  #       default: true
+  #     tag-name:
+  #       type: string
+  #       default: "draft"
+  #     channel:
+  #       type: string
+  #       default: "dev"
 
 env:
   IS_GITHUB_ACTIONS: 1
-  CHANNEL: "${{ inputs.channel }}"
+  ##! CHANNEL: "${{ inputs.channel }}"
   FLUTTER_VERSION: '3.16.x'
   NDK_VERSION: r26b
-  UPLOAD_ARTIFACT: "${{ inputs.upload-artifact }}"
+  ##! UPLOAD_ARTIFACT: "${{ inputs.upload-artifact }}"
   TAG_NAME: "${{ inputs.tag-name }}"
   TARGET_NAME_AppImage: "Hiddify-Linux-x64"
   TARGET_NAME_deb: "Hiddify-Debian-x64"
@@ -51,28 +54,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-#          - platform: android-apk
-#            os: ubuntu-latest
-#            targets: apk
-#
-#          - platform: android-aab
-#            os: ubuntu-latest
-#            targets: aab
-#
-#          - platform: windows
-#            os: windows-2019
-#            aarch: amd64
-#            targets: exe,msix
-
           - platform: linux
             os: ubuntu-20.04
             aarch: amd64
             targets: AppImage,deb,rpm
-
- #         - platform: macos
- #           os: macos-13
- #           aarch: universal
- #           targets: dmg,pkg
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -242,100 +227,3 @@ jobs:
           name: artifact
           path: ./out
           retention-days: 2
-
-  update-draft:
-    permissions: write-all
-    if: ${{ inputs.upload-artifact }}
-    needs: [build]
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-        with:
-          # by default, it uses a depth of 1
-          # this fetches all history so that we can read each commit
-          fetch-depth: 0
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: artifact
-          path: ./out/
-
-      - name: Display Files Structure
-        run: ls -R
-        working-directory: ./out
-
-      - name: Delete Current Release Assets
-        uses: 8Mi-Tech/delete-release-assets-action@main
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: 'draft'
-          deleteOnlyFromDrafts: false
-          
-      - name: prepare_release_message
-        run: |
-          pip install gitchangelog pystache mustache markdown
-          prelease=$(curl --silent "https://api.github.com/repos/hiddify/hiddify-next/releases/latest" | grep -Po '"tag_name": "\K.*?(?=")')
-          current="${{ github.ref_name }}"
-          sed 's|RELEASE_TAG|${{ env.TAG_NAME }}|g' ./.github/release_message.md > release.md
-          echo -e "\n\n<details markdown=1><summary>All changes from $current to the latest commit:</summary>\n\n">>release.md
-          gitchangelog "${prelease}.." >> release.md  2>&1 || echo "Error in gitchangelog"
-          echo -e "\n\n</details>">>release.md
-      - name: Create or Update Draft Release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: ./out/*
-          name: 'draft'
-          tag_name: 'draft'
-          body_path: './release.md'
-          prerelease: true
-
-  upload-release:
-    permissions: write-all
-    if: ${{ inputs.upload-artifact && inputs.tag-name != 'draft' }}
-    needs: [build]
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: artifact
-          path: ./out/
-
-      - name: Display Files Structure
-        run: |
-          ls -R ./out
-          ls -R ./.github/
-          ls -R ./.git/
-          mv out/hiddify-android-market.aab  hiddify-android-market.aab
-
-      - name: prepare_release_message
-        run: |
-          sed 's|RELEASE_TAG|${{ env.TAG_NAME }}|g' ./.github/release_message.md >> release.md
-
-      - name: Upload Release
-        uses: softprops/action-gh-release@v1
-        if: ${{ success() }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          prerelease: ${{ env.CHANNEL == 'dev' }}
-          tag_name: ${{ env.TAG_NAME }}
-          body_path: './release.md'
-          files: ./out/*
-
-      - name: Create service_account.json
-        run: echo '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}' > service_account.json
-
-      - name: Deploy to Google Play Internal Testers
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJson: service_account.json
-          packageName: app.hiddify.com
-          releaseName: ${{ env.TAG_NAME }}
-          releaseFiles: ./hiddify-android-market.aab
-          track: 'beta'
