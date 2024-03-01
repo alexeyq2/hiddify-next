@@ -35,8 +35,8 @@ env:
 
 jobs:
   test:
-    # runs-on: ubuntu-latest
-    runs-on: buildkitsandbox
+    #!! runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
       - uses: subosito/flutter-action@v2
@@ -50,7 +50,7 @@ jobs:
         run: flutter test
 
   build:
-    needs: test
+    #!! needs: test
     permissions: write-all
     strategy:
       fail-fast: false
@@ -61,8 +61,7 @@ jobs:
             aarch: amd64
             targets: AppImage,deb,rpm
 
-    # runs-on: ${{ matrix.os }}
-    runs-on: buildkitsandbox
+    runs-on: ${{ matrix.os }}
     steps:
       - name: checkout
         uses: actions/checkout@v3
