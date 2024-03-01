@@ -20,7 +20,8 @@ env:
   ##! CHANNEL: "${{ inputs.channel }}"
   FLUTTER_VERSION: '3.16.x'
   NDK_VERSION: r26b
-  ##! UPLOAD_ARTIFACT: "${{ inputs.upload-artifact }}"
+  ##! UPLOAD_ARTIFACT: "${{ inputs.upload-artifact }}" 
+  UPLOAD_ARTIFACT: "true"
   TAG_NAME: "${{ inputs.tag-name }}"
   TARGET_NAME_AppImage: "Hiddify-Linux-x64"
   TARGET_NAME_deb: "Hiddify-Debian-x64"
@@ -34,18 +35,19 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # runs-on: ubuntu-latest
+    runs-on: buildkitsandbox
     steps:
       - uses: actions/checkout@v3
-      # - uses: subosito/flutter-action@v2
-      #   with:
-      #     flutter-version: ${{ env.FLUTTER_VERSION }}
-      #     channel: 'stable'
-      #     cache: true
-      # - name: Prepare
-      #   run: make linux-prepare
-      # - name: Test
-      #   run: flutter test
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+      - name: Prepare
+        run: make linux-prepare
+      - name: Test
+        run: flutter test
 
   build:
     needs: test
@@ -59,7 +61,8 @@ jobs:
             aarch: amd64
             targets: AppImage,deb,rpm
 
-    runs-on: ${{ matrix.os }}
+    # runs-on: ${{ matrix.os }}
+    runs-on: buildkitsandbox
     steps:
       - name: checkout
         uses: actions/checkout@v3
