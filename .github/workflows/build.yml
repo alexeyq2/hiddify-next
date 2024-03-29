@@ -36,7 +36,7 @@ env:
 jobs:
   test:
     #!! runs-on: ubuntu-latest
-    runs-on: self-hosted
+    # runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
       - uses: subosito/flutter-action@v2
@@ -61,8 +61,8 @@ jobs:
             aarch: amd64
             targets: AppImage,deb,rpm
 
-    ##! runs-on: ${{ matrix.os }}
-    runs-on: self-hosted
+    runs-on: ${{ matrix.os }}
+    ##! runs-on: self-hosted
     steps:
       - name: checkout
         uses: actions/checkout@v3
